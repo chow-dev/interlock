@@ -107,7 +107,7 @@ module Interlock
           begin
             CACHE.installed_by_interlock
           rescue NoMethodError
-            RAILS_DEFAULT_LOGGER.warn "** interlock: Object::CACHE already defined; will not install a new one"
+            Rails.logger.warn "** interlock: Object::CACHE already defined; will not install a new one"
             # Mark that somebody else installed this CACHE.
             class << CACHE
               def installed_by_interlock; false; end
@@ -140,7 +140,7 @@ module Interlock
         ActionView::Helpers::CacheHelper.class_eval do
           def cache(name = {}, options = nil, &block)
             # Things explode if options does not default to nil
-            RAILS_DEFAULT_LOGGER.debug "** fragment #{name} stored via obsolete cache() call"
+            Rails.logger.debug "** fragment #{name} stored via obsolete cache() call"
             @controller.fragment_for(output_buffer, name, options, &block)
           end
         end
@@ -159,7 +159,7 @@ module Interlock
       # Configure ActiveRecord#find caching.
       #
       def install_finders
-        RAILS_DEFAULT_LOGGER.warn "** using interlock finder caches"
+        Rails.logger.warn "** using interlock finder caches"
         ActiveRecord::Base.send(:include, Interlock::Finders)
       end
 

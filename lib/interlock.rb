@@ -22,7 +22,7 @@ rescue LoadError
 end
 
 unless ActionController::Base.perform_caching
-  RAILS_DEFAULT_LOGGER.warn "** interlock warning; config.perform_caching == false"
+  Rails.logger.warn "** interlock warning; config.perform_caching == false"
 end
 
 Interlock::Config.run!
