@@ -1,8 +1,6 @@
 # Don't change this file!
 # Configure your app in config/environment.rb and config/environments/*.rb
 
-RAILS_ROOT = "#{File.dirname(__FILE__)}/.." unless defined?(RAILS_ROOT)
-
 module Rails
   class << self
     def boot!
@@ -21,7 +19,7 @@ module Rails
     end
 
     def vendor_rails?
-      File.exist?("#{RAILS_ROOT}/vendor/rails")
+      File.exist?(Rails.root + "/vendor/rails")
     end
 
     def preinitialize
@@ -29,7 +27,7 @@ module Rails
     end
 
     def preinitializer_path
-      "#{RAILS_ROOT}/config/preinitializer.rb"
+      Rails.root + "config/preinitializer.rb"
     end
   end
 
@@ -42,7 +40,7 @@ module Rails
 
   class VendorBoot < Boot
     def load_initializer
-      require "#{RAILS_ROOT}/vendor/rails/railties/lib/initializer"
+      require Rails.root + "vendor/rails/railties/lib/initializer"
     end
   end
 
@@ -100,7 +98,7 @@ module Rails
 
       private
         def read_environment_rb
-          File.read("#{RAILS_ROOT}/config/environment.rb")
+          File.read(Rails.root + "config/environment.rb")
         end
     end
   end
