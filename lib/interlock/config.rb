@@ -53,7 +53,7 @@ module Interlock
           config.deep_symbolize_keys!
 
           Interlock.config.merge!(config[:defaults] || {})
-          Interlock.config.merge!(config[RAILS_ENV.to_sym] || {})
+          Interlock.config.merge!(config[Rails.env.to_sym] || {})
         end
 
         install_memcached
@@ -67,7 +67,7 @@ module Interlock
       # Configure memcached for this app.
       #
       def install_memcached
-        Interlock.config[:namespace] << "-#{RAILS_ENV}"
+        Interlock.config[:namespace] << "-#{Rails.env}"
 
         unless defined? Object::CACHE
 
