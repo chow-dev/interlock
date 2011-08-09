@@ -115,21 +115,6 @@ module Interlock
           end
         end
 
-        # Add the fragment cache and lock APIs to the cache singleton. This happens no matter
-        # who installed the singleton.
-        class << CACHE
-          include Interlock::Lock
-
-          def read(*args)
-            get args.first.to_s
-          end
-
-          def write(name, content, options = {})
-            set(name.to_s,
-              content,
-              options.is_a?(Hash) ? options[:ttl] : Interlock.config[:ttl] )
-          end
-        end
       end
 
       #
