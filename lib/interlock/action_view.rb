@@ -67,6 +67,8 @@ See ActionController::Base for explanations of the rest of the options. The <tt>
          # Restore the cache state
          @cached_content_for = previous_cached_content_for
        end
+
+       nil
      end
 
     #:stopdoc:
