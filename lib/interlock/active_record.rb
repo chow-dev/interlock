@@ -4,31 +4,33 @@ module ActiveRecord #:nodoc:
 
     @@nil_sentinel = :_nil
 
-    class << self # Class methods    
+    class << self # Class methods
       def update_counters_with_expiry(id, counters)
         update_counters_without_expiry(id, counters)
         find(id).expire_interlock_keys
       end
-      alias_method_chain :update_counters, :expiry      
+      alias_method_chain :update_counters, :expiry
     end
-    
+
     #
     # Convert this record to a tag string.
     #
     def to_interlock_tag
       "#{self.class.name}-#{self.id}".escape_tag_fragment
-    end        
+    end
 
     #
     # The expiry callback.
     #
     def expire_interlock_keys
       return if Interlock.config[:disabled] or (defined? CGI::Session::ActiveRecordStore and is_a? CGI::Session::ActiveRecordStore::Session)
-      
+
       # Fragments
       self.expire_interlock_keys_for_dependency(Interlock.dependency_key(self.class.base_class, :all, nil))
-      self.expire_interlock_keys_for_dependency(Interlock.dependency_key(self.class.base_class, :id, "::::#{to_param}:"))
-      
+      id = to_param
+      id = id.to_i unless id.to_i == 0
+      self.expire_interlock_keys_for_dependency(Interlock.dependency_key(self.class.base_class, :id, "::::#{id}:"))
+
       # Models
       if Interlock.config[:with_finders]
         key = self.class.base_class.caching_key(self.id)
@@ -36,7 +38,7 @@ module ActiveRecord #:nodoc:
         Interlock.invalidate key
       end
     end
-    
+
     before_save :expire_interlock_keys
     after_save :expire_interlock_keys
     after_destroy :expire_interlock_keys
@@ -49,13 +51,13 @@ module ActiveRecord #:nodoc:
       reload_without_expiry(*args)
     end
     alias_method_chain :reload, :expiry
-  
+
     def expire_interlock_keys_for_dependency(dependency_key)
       (CACHE.get(dependency_key) || {}).each do |key, scope|
         Interlock.say key, "invalidated by rule #{self.class} -> #{scope.inspect}."
         Interlock.invalidate key
-      end      
+      end
     end
-    
+
   end
 end

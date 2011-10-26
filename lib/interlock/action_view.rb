@@ -1,9 +1,4 @@
-
 module ActionView #:nodoc:
-  class Base #:nodoc:
-    attr_accessor :cached_content_for
-  end
-
   module Helpers #:nodoc:
     module CacheHelper
 
@@ -38,62 +33,36 @@ It's fine to use a <tt>view_cache</tt> block without a <tt>behavior_cache</tt> b
 See ActionController::Base for explanations of the rest of the options. The <tt>view_cache</tt> and <tt>behavior_cache</tt> APIs are identical except for setting the <tt>:ttl</tt>, which can only be done in the view, and the default dependency, which is only set by <tt>behavior_cache</tt>.
 
 =end
-     def view_cache(*args, &block)
-       # conventional_class = begin; controller.controller_name.classify.constantize; rescue NameError; end
-       options, dependencies = Interlock.extract_options_and_dependencies(args, nil)
+      def view_cache(*args, &block)
+        options, dependencies = Interlock.extract_options_and_dependencies(args, nil)
 
-       key = controller.caching_key(options.value_for_indifferent_key(:ignore), options.value_for_indifferent_key(:tag))
+        key = controller.caching_key(options.value_for_indifferent_key(:ignore), options.value_for_indifferent_key(:tag))
 
-       if options[:perform] == false || Interlock.config[:disabled]
-         # Interlock.say key, "is not cached"
-         block.call
-       else
-         Interlock.register_dependencies(dependencies, key)
+        if options[:perform] == false || Interlock.config[:disabled]
+          capture &block
+        else
+          Interlock.register_dependencies(dependencies, key)
 
-         # Interlock.say key, "is rendering"
+          @_content_for, previous_cached_content_for = Hash.new { |h, k| h[k] = ActiveSupport::SafeBuffer.new }, @_content_for
 
-         @cached_content_for, previous_cached_content_for = {}, @cached_content_for
-
-         cache key, :ttl => (options.value_for_indifferent_key(:ttl) or Interlock.config[:ttl]), &block
-
-         # This is tricky. If we were already caching content_fors in a parent block, we need to
-         # append the content_fors set in the inner block to those already set in the outer block.
-         if previous_cached_content_for
-           @cached_content_for.each do |key, value|
-             previous_cached_content_for[key] = "#{previous_cached_content_for[key]}#{value}"
-           end
-         end
-
-         # Restore the cache state
-         @cached_content_for = previous_cached_content_for
-       end
-
-       nil
-     end
-
-    #:stopdoc:
-    alias :caching :view_cache # Deprecated
-    #:startdoc:
-
-    end
-
-
-    module CaptureHelper
-      #
-      # Override content_for so we can cache the instance variables it sets along with the fragment.
-      #
-      def content_for(name, content = nil, &block)
-        content = capture(&block) if block_given?
-
-        # If we are in a view_cache block, cache what we added to this instance variable
-        if @cached_content_for
-          @cached_content_for[name] = "#{@cached_content_for[name]}#{content}"
+          cached_content = Rails.cache.read(key)
+          unless cached_content
+            cached_content = capture(&block)
+            Rails.cache.write key, cached_content, :ttl => (options.value_for_indifferent_key(:ttl) or Interlock.config[:ttl])
+          end
+          if (cached_block_content = Rails.cache.read(key + ':content_for'))
+            @_content_for = cached_block_content
+          else
+            Rails.cache.write key + ':content_for', {}.merge(@_content_for), :ttl => (options.value_for_indifferent_key(:ttl) or Interlock.config[:ttl])
+          end
+          # This is tricky. If we were already caching content_fors in a parent block, we need to
+          # append the content_fors set in the inner block to those already set in the outer block.
+          previous_cached_content_for.merge!(@_content_for) { |k, value1, value2| "#{value1}#{value2}" }
+          # Restore the cache state
+          @_content_for = previous_cached_content_for
+          cached_content
         end
-
-        @_content_for[name] << content if content
-        @_content_for[name] unless content
       end
     end
-
   end
 end

@@ -86,12 +86,30 @@ module Interlock
 
         # Make sure to not overwrite broader scopes.
         unless this == :all or this == scope
-          # We need to write, so acquire the lock.
-          CACHE.lock(dep_key) do |hash|
+          store_dependency(dep_key, key, klass, scope)
+        end
+      end
+    end
+
+    def store_dependency(dep_key, key, klass, scope)
+      stored = false
+      retry_count = 0
+      while !stored do
+        begin
+          stored = CACHE.cas(dep_key) do |hash|
             Interlock.say key, "registered a dependency on #{klass} -> #{scope.inspect}."
             (hash || {}).merge({key => scope})
           end
+        rescue Memcached::ConnectionDataExists
+          retry_count += 1
+          retry
         end
+        if stored
+          Interlock.say dep_key, "retried store_dependency #{retry_count} times" if retry_count > 0
+          return
+        end
+
+        stored = CACHE.add(dep_key, {key => scope})
       end
     end
 
@@ -128,7 +146,9 @@ module Interlock
     def caching_key(controller, action, id, tag)
       raise ArgumentError, 'Both controller and action must be specified' unless controller and action
 
-      id = (id or 'all').to_interlock_tag
+      id = id || 'all'
+      id = id.to_i unless id.to_i == 0
+      id = id.to_interlock_tag
       tag = tag.to_interlock_tag
 
       key = "interlock:#{ENV['RAILS_ASSET_ID']}:#{controller}:#{action}:#{id}:#{tag}"
@@ -149,6 +169,7 @@ module Interlock
       # Console and tests do not install the local cache
       Interlock.local_cache.delete(key) if Interlock.local_cache
       ActionController::Base.cache_store.delete key
+      ActionController::Base.cache_store.delete key + ':content_for'
     end
 
   end

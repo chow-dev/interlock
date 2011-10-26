@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name        = "interlock"
-  s.version     = "1.4.custom"
+  s.version     = "1.4.rails3"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Evan Weaver"]
   s.email       = []
